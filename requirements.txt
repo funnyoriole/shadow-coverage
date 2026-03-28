@@ -1,5 +1,4 @@
 yfinance
 requests
 beautifulsoup4
-anthropic
 feedparser
