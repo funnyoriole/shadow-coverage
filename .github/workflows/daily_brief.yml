@@ -6,7 +6,6 @@ on:
     # During AEDT (Oct–Apr, UTC+11): change to '0 0 * * 1-5'
     - cron: "0 1 * * 1-5"
 
-  # Lets you trigger a manual run from the GitHub Actions tab — useful for testing
   workflow_dispatch:
 
 jobs:
@@ -15,10 +14,10 @@ jobs:
 
     steps:
       - name: Check out repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5.4.0
         with:
           python-version: "3.11"
 
@@ -34,12 +33,3 @@ jobs:
         env:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
         run: python send_email.py
-
-      - name: Build dashboard
-        run: python build_dashboard.py
-
-      - name: Deploy dashboard to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs
