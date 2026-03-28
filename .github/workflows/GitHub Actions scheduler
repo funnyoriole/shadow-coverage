@@ -1,0 +1,47 @@
+name: Shadow Coverage Daily Brief
+
+on:
+  schedule:
+    # 11:00pm UTC = 11:00am AEST (UTC+10) on weekdays
+    # Adjust to 1:00am UTC during AEDT (UTC+11) daylight saving
+    - cron: "0 1 * * 1-5"
+
+  # Allow manual trigger from GitHub UI (useful for testing)
+  workflow_dispatch:
+
+jobs:
+  run-brief:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install yfinance requests beautifulsoup4 anthropic feedparser
+
+      - name: Generate report
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python generate_brief.py
+
+      - name: Send email
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python send_email.py
+
+      - name: Update web dashboard
+        run: python build_dashboard.py
+
+      - name: Deploy dashboard to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
