@@ -2,31 +2,56 @@ name: Shadow Coverage Daily Brief
 
 on:
   schedule:
-    - cron: "0 1 * * 1-5"
+    - cron: "0 22 * * 0-4"   # 8am AEST (10pm UTC prev day) — macro brief, Mon–Fri
+    - cron: "0 1 * * 1-5"    # 11am AEST (1am UTC) — stock brief
   workflow_dispatch:
 
 jobs:
-  run-brief:
+
+  # ── Job 1: Morning macro brief (8am AEST) ───────────────────
+  macro-brief:
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 22 * * 0-4'
 
     steps:
-      - name: Check out repo
-        uses: actions/checkout@v4.2.2
-
-      - name: Set up Python
-        uses: actions/setup-python@v5.4.0
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.4.0
         with:
           python-version: "3.11"
 
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Generate report
+      - name: Generate macro brief
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python macro_brief.py
+
+      - name: Send macro email
+        env:
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python send_macro_email.py
+
+  # ── Job 2: Stock brief (11am AEST) ──────────────────────────
+  stock-brief:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 1 * * 1-5'
+
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.4.0
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate stock report
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python generate_brief.py
 
-      - name: Send email
+      - name: Send stock email
         env:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
         run: python send_email.py
