@@ -55,27 +55,34 @@ def format_snapshot(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 # ── Gemini call with Google Search grounding ──────────────────
-def call_gemini_with_search(prompt: str) -> str:
+def call_gemini_with_search(prompt: str, retries: int = 3, wait: int = 20) -> str:
+    import time
     body = json.dumps({
         "contents": [{"parts": [{"text": prompt}]}],
-        "tools": [{"google_search": {}}],   # enables live web search
+        "tools": [{"google_search": {}}],
         "generationConfig": {
             "maxOutputTokens": 1000,
             "temperature": 0.2
         }
     }).encode()
-    req = urllib.request.Request(
-        GEMINI_URL,
-        data=body,
-        headers={"Content-Type": "application/json"},
-        method="POST"
-    )
-    with urllib.request.urlopen(req, timeout=30) as r:
-        resp = json.loads(r.read())
 
-    # Extract text from all parts (search grounding may split into multiple)
-    parts = resp["candidates"][0]["content"]["parts"]
-    return "".join(p.get("text", "") for p in parts).strip()
+    for attempt in range(1, retries + 1):
+        try:
+            req = urllib.request.Request(
+                GEMINI_URL,
+                data=body,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=30) as r:
+                resp = json.loads(r.read())
+            parts = resp["candidates"][0]["content"]["parts"]
+            return "".join(p.get("text", "") for p in parts).strip()
+        except Exception as e:
+            if attempt == retries:
+                raise
+            print(f"  Attempt {attempt} failed ({e}) — retrying in {wait}s...")
+            time.sleep(wait)
 
 # ── Prompt ─────────────────────────────────────────────────────
 def build_macro_prompt(snapshot_text: str, date_str: str) -> str:
