@@ -7,22 +7,40 @@ import re
 
 # ── Prices ─────────────────────────────────────────────────────
 def get_price_data(ticker: str) -> dict | None:
-    t    = yf.Ticker(ticker)
-    hist = t.history(period="2d", interval="1d")
-    if len(hist) < 2:
+    t = yf.Ticker(ticker)
+
+    # 1m bars for the last day gives us the latest trade price + timestamp
+    intraday = t.history(period="1d", interval="1m")
+    # daily for prev close + day before that
+    daily    = t.history(period="3d", interval="1d")
+
+    if len(daily) < 3:
         return None
-    prev  = hist["Close"].iloc[-2]
-    curr  = hist["Close"].iloc[-1]
-    pct   = ((curr - prev) / prev) * 100
-    info  = t.fast_info
+
+    last_bar  = intraday.iloc[-1]
+    curr      = float(last_bar["Close"])
+    last_time = intraday.index[-1]  # timezone-aware timestamp from yfinance
+
+    # Convert to Sydney time for display
+    import pytz
+    sydney    = pytz.timezone("Australia/Sydney")
+    last_time_syd = last_time.astimezone(sydney)
+    timestamp_str = last_time_syd.strftime("%d %b %Y %I:%M %p AEST")
+
+    prev       = float(daily["Close"].iloc[-2])
+    day_before = float(daily["Close"].iloc[-3])
+    pct        = ((curr - prev) / prev) * 100
+    pct_yest   = ((prev - day_before) / day_before) * 100
+
     return {
-        "price":      round(float(curr), 3),
-        "prev_close": round(float(prev), 3),
-        "pct_change": round(float(pct), 2),
-        "day_high":   round(float(hist["High"].iloc[-1]), 3),
-        "day_low":    round(float(hist["Low"].iloc[-1]),  3),
-        "volume":     int(hist["Volume"].iloc[-1]),
-        "market_cap": getattr(info, "market_cap", None),
+        "price":         round(curr, 3),
+        "timestamp":     timestamp_str,
+        "prev_close":    round(prev, 3),
+        "pct_change":    round(pct, 2),
+        "day_high":      round(float(intraday["High"].max()), 3),
+        "day_low":       round(float(intraday["Low"].min()),  3),
+        "volume":        int(intraday["Volume"].sum()),
+        "market_cap":    getattr(t.fast_info, "market_cap", None),
     }
 
 # ── ASX Announcements via MarketIndex RSS ──────────────────────
