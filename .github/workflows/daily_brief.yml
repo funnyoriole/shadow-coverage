@@ -2,10 +2,7 @@ name: Shadow Coverage Daily Brief
 
 on:
   schedule:
-    # 11pm UTC = 11am AEST (UTC+10) weekdays
-    # During AEDT (Oct–Apr, UTC+11): change to '0 0 * * 1-5'
     - cron: "0 1 * * 1-5"
-
   workflow_dispatch:
 
 jobs:
