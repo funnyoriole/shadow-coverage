@@ -5,7 +5,7 @@ WATCHLIST = [
 ]
 
 EMAIL_SENDER      = "funny.oriole@gmail.com"
-EMAIL_RECIPIENT   = "Oriana.Pham@morningstar.com"
+EMAIL_RECIPIENT   = "orianapham@gmail.com" # Oriana.Pham@morningstar.com
 EMAIL_SUBJECT     = "Shadow Coverage Daily Brief"
 
 # Causality engine thresholds
