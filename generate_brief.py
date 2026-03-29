@@ -37,7 +37,9 @@ def build_batch_prompt(contexts: list) -> str:
         name      = ctx["stock"]["name"]
         tkr       = ctx["stock"]["ticker"]
         move      = p["pct_change"]
+        prev_move = p.get("pct_change_prev", 0)
         direction = "up" if move >= 0 else "down"
+        prev_dir  = "up" if prev_move >= 0 else "down"
         sector_line = (
             f"ASX 200 today: {ctx['sector_move']:+.1f}%"
             if ctx["sector_move"] is not None else "ASX 200: unavailable"
@@ -52,7 +54,8 @@ def build_batch_prompt(contexts: list) -> str:
 
         stocks_block += f"""
 --- Stock {i+1}: {name} ({tkr}) ---
-Price: ${p['price']} ({direction} {abs(move):.1f}% from prev close ${p['prev_close']})
+Today:     ${p['price']} ({direction} {abs(move):.1f}% from prev close ${p['prev_close']})
+Yesterday: {prev_dir} {abs(prev_move):.1f}%
 Day range: ${p['day_low']} – ${p['day_high']} | Volume: {p['volume']:,}
 {sector_line}
 Evidence:
