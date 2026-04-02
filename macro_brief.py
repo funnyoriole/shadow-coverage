@@ -5,7 +5,7 @@ import yfinance as yf
 from datetime import datetime
 import pytz
 
-GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
+GEMINI_API_KEY = os.environ["GEMINI_API_KEY_MACRO"]
 GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
     "gemini-2.0-flash:generateContent?key=" + GEMINI_API_KEY
@@ -95,7 +95,7 @@ def format_news(items: list[dict]) -> str:
     return "\n".join(lines)
 
 # ── Gemini call (plain, no grounding) ─────────────────────────
-def call_gemini(prompt: str, retries: int = 3, wait: int = 20) -> str:
+def call_gemini(prompt: str, retries: int = 3, wait: int = 60) -> str:
     body = json.dumps({
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"maxOutputTokens": 1000, "temperature": 0.2}
