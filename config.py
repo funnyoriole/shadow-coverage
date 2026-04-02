@@ -4,9 +4,8 @@ WATCHLIST = [
     # {"ticker": "CBA.AX", "name": "Commonwealth Bank", "asx_code": "CBA"},
 ]
 
-EMAIL_SENDER      = "funny.oriole@gmail.com"
-EMAIL_RECIPIENT   = "orianapham@gmail.com" # Oriana.Pham@morningstar.com
-EMAIL_SUBJECT     = "Shadow Coverage Daily Brief"
+EMAIL_SUBJECT_STOCKS = "Shadow Coverage Daily Brief"
+EMAIL_SUBJECT_MACRO  = "Morning Intelligence Brief"
 
 # Causality engine thresholds
 BIG_MOVE_PCT      = 3.0   # use 24h event window
