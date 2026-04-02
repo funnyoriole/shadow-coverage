@@ -7,11 +7,9 @@ on:
 
 jobs:
 
-  # ── Job 1: Morning macro brief (8am AEST) ───────────────────
   macro-brief:
     runs-on: ubuntu-latest
     if: github.event.schedule == '0 22 * * 0-4'
-
     steps:
       - uses: actions/checkout@v4.2.2
       - uses: actions/setup-python@v5.4.0
@@ -21,18 +19,18 @@ jobs:
         run: pip install -r requirements.txt
       - name: Generate macro brief
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY_MACRO: ${{ secrets.GEMINI_API_KEY_MACRO }}
         run: python macro_brief.py
       - name: Send macro email
         env:
-          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GMAIL_SENDER_MACRO:        ${{ secrets.GMAIL_SENDER_MACRO }}
+          GMAIL_APP_PASSWORD_MACRO:  ${{ secrets.GMAIL_APP_PASSWORD_MACRO }}
+          GMAIL_RECIPIENT:           ${{ secrets.GMAIL_RECIPIENT }}
         run: python send_macro_email.py
 
-  # ── Job 2: Stock brief (11am AEST) ──────────────────────────
   stock-brief:
     runs-on: ubuntu-latest
     if: github.event.schedule == '0 1 * * 1-5'
-
     steps:
       - uses: actions/checkout@v4.2.2
       - uses: actions/setup-python@v5.4.0
@@ -42,9 +40,11 @@ jobs:
         run: pip install -r requirements.txt
       - name: Generate stock report
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY_STOCKS: ${{ secrets.GEMINI_API_KEY_STOCKS }}
         run: python generate_brief.py
       - name: Send stock email
         env:
-          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GMAIL_SENDER_STOCKS:        ${{ secrets.GMAIL_SENDER_STOCKS }}
+          GMAIL_APP_PASSWORD_STOCKS:  ${{ secrets.GMAIL_APP_PASSWORD_STOCKS }}
+          GMAIL_RECIPIENT:            ${{ secrets.GMAIL_RECIPIENT }}
         run: python send_email.py
