@@ -1,10 +1,11 @@
 import json, os, smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from config import EMAIL_SENDER, EMAIL_RECIPIENT, EMAIL_SUBJECT
+from config import EMAIL_SUBJECT_STOCKS
 
-CONF_COLOR = {"High": "#2e7d32", "Medium": "#e65100", "Low": "#757575"}
-CONF_BG    = {"High": "#e8f5e9", "Medium": "#fff3e0", "Low": "#f5f5f5"}
+SENDER    = os.environ["GMAIL_SENDER_STOCKS"]
+RECIPIENT = os.environ["GMAIL_RECIPIENT"]
+PASSWORD  = os.environ["GMAIL_APP_PASSWORD_STOCKS"]
 
 def build_html(report: dict) -> str:
     sector_line = (
