@@ -15,9 +15,11 @@ jobs:
         run: pip install -r requirements.txt
       - name: Generate stock report
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY_STOCKS: ${{ secrets.GEMINI_API_KEY_STOCKS }}
         run: python generate_brief.py
       - name: Send stock email
         env:
-          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GMAIL_SENDER_STOCKS:       ${{ secrets.GMAIL_SENDER_STOCKS }}
+          GMAIL_APP_PASSWORD_STOCKS: ${{ secrets.GMAIL_APP_PASSWORD_STOCKS }}
+          GMAIL_RECIPIENT:           ${{ secrets.GMAIL_RECIPIENT }}
         run: python send_email.py
