@@ -15,9 +15,11 @@ jobs:
         run: pip install -r requirements.txt
       - name: Generate macro brief
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY_MACRO: ${{ secrets.GEMINI_API_KEY_MACRO }}
         run: python macro_brief.py
       - name: Send macro email
         env:
-          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GMAIL_SENDER_MACRO:       ${{ secrets.GMAIL_SENDER_MACRO }}
+          GMAIL_APP_PASSWORD_MACRO: ${{ secrets.GMAIL_APP_PASSWORD_MACRO }}
+          GMAIL_RECIPIENT:          ${{ secrets.GMAIL_RECIPIENT }}
         run: python send_macro_email.py
