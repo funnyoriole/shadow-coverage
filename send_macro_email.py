@@ -1,7 +1,11 @@
 import json, os, smtplib, re
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from config import EMAIL_SENDER, EMAIL_RECIPIENT
+from config import EMAIL_SUBJECT_MACRO
+
+SENDER    = os.environ["GMAIL_SENDER_MACRO"]
+RECIPIENT = os.environ["GMAIL_RECIPIENT"]
+PASSWORD  = os.environ["GMAIL_APP_PASSWORD_MACRO"]
 
 def md_to_html(text: str) -> str:
     """Minimal markdown → HTML: headers and [KEY] highlights only."""
@@ -83,16 +87,15 @@ def send():
 
     html           = build_html(report)
     msg            = MIMEMultipart("alternative")
-    msg["Subject"] = f"Morning Intelligence Brief — {report['date']}"
-    msg["From"]    = EMAIL_SENDER
-    msg["To"]      = EMAIL_RECIPIENT
+    msg["Subject"] = f"{EMAIL_SUBJECT_MACRO} — {report['date']}"
+    msg["From"]    = SENDER
+    msg["To"]      = RECIPIENT
     msg.attach(MIMEText(html, "html"))
 
-    pwd = os.environ["GMAIL_APP_PASSWORD"]
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as s:
-        s.login(EMAIL_SENDER, pwd)
-        s.sendmail(EMAIL_SENDER, EMAIL_RECIPIENT, msg.as_string())
-    print(f"✓ Macro brief sent to {EMAIL_RECIPIENT}")
+        s.login(SENDER, PASSWORD)
+        s.sendmail(SENDER, RECIPIENT, msg.as_string())
+    print(f"✓ Macro brief sent to {RECIPIENT}")
 
 if __name__ == "__main__":
     send()
