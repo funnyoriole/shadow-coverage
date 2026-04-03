@@ -1,4 +1,4 @@
-import json, os
+import json, os, time
 from datetime import date
 import urllib.request
 from config import WATCHLIST
@@ -11,26 +11,30 @@ GEMINI_URL = (
     "gemini-2.0-flash:generateContent?key=" + GEMINI_API_KEY
 )
 
-def call_gemini(prompt: str) -> str:
+def call_gemini(prompt: str, retries: int = 3, wait: int = 60) -> str:
     body = json.dumps({
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"maxOutputTokens": 1200, "temperature": 0.2}
     }).encode()
-    req = urllib.request.Request(
-        GEMINI_URL,
-        data=body,
-        headers={"Content-Type": "application/json"},
-        method="POST"
-    )
-    with urllib.request.urlopen(req, timeout=30) as r:
-        resp = json.loads(r.read())
-    return resp["candidates"][0]["content"]["parts"][0]["text"].strip()
+    for attempt in range(1, retries + 1):
+        try:
+            req = urllib.request.Request(
+                GEMINI_URL,
+                data=body,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=30) as r:
+                resp = json.loads(r.read())
+            parts = resp["candidates"][0]["content"]["parts"]
+            return "".join(p.get("text", "") for p in parts).strip()
+        except Exception as e:
+            if attempt == retries:
+                raise
+            print(f"  Attempt {attempt} failed ({e}) — retrying in {wait}s...")
+            time.sleep(wait)
 
 def build_batch_prompt(contexts: list) -> str:
-    """
-    Build one prompt covering all stocks.
-    Ask Gemini to return a JSON array so we can parse each summary reliably.
-    """
     stocks_block = ""
     for i, ctx in enumerate(contexts):
         p         = ctx["price_data"]
@@ -44,14 +48,12 @@ def build_batch_prompt(contexts: list) -> str:
             f"ASX 200 today: {ctx['sector_move']:+.1f}%"
             if ctx["sector_move"] is not None else "ASX 200: unavailable"
         )
-        if ctx["top_events"]:
-            evidence = "\n".join(
+        evidence = (
+            "\n".join(
                 f"    [{e['time_str']} AEST] [{e['type'].upper()}] {e['title']}"
                 for e in ctx["top_events"]
-            )
-        else:
-            evidence = "    No material events found in the relevant time window."
-
+            ) or "    No material events found in the relevant time window."
+        )
         stocks_block += f"""
 --- Stock {i+1}: {name} ({tkr}) ---
 Today:     ${p['price']} ({direction} {abs(move):.1f}% from prev close ${p['prev_close']})
@@ -61,21 +63,21 @@ Day range: ${p['day_low']} – ${p['day_high']} | Volume: {p['volume']:,}
 Evidence:
 {evidence}
 """
-
     return f"""You are a buy-side equity analyst providing daily shadow coverage briefs.
 
 Below are {len(contexts)} ASX stocks. For each one:
 1. Identify the most likely driver of today's price move using only the evidence provided.
 2. Explain the causality clearly — how does the event explain the magnitude of the move?
-3. If no clear catalyst exists, say: "No clear catalyst identified — move likely reflects [sector/market/noise]."
-4. Note any follow-up items the analyst should monitor.
-5. Write 3–4 sentences of professional analyst prose. No bullet points.
+3. Note whether today's move is a continuation or reversal of yesterday's direction.
+4. If no clear catalyst exists, say: "No clear catalyst identified — move likely reflects [sector/market/noise]."
+5. Note any follow-up items the analyst should monitor.
+6. Write 3–4 sentences of professional analyst prose. No bullet points.
 
-Return your response as a JSON array, one object per stock, in the same order as the input.
+Return a JSON array, one object per stock, same order as input.
 Each object must have exactly two keys: "ticker" and "summary".
 Return only the JSON array, no other text.
 
-Example format:
+Example:
 [
   {{"ticker": "ARF.AX", "summary": "Arena REIT declined..."}},
   {{"ticker": "ZIP.AX", "summary": "Zip Co fell sharply..."}}
@@ -84,15 +86,12 @@ Example format:
 {stocks_block}"""
 
 def parse_batch_response(raw: str, contexts: list) -> dict:
-    """Parse the JSON array response. Fall back gracefully if parsing fails."""
-    # Strip markdown code fences if Gemini wraps in ```json ... ```
     clean = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
     try:
         items = json.loads(clean)
         return {item["ticker"]: item["summary"] for item in items}
     except Exception:
-        # If JSON parsing fails, return the raw text for all stocks
-        fallback = f"AI summarisation parse error. Raw response: {raw[:200]}"
+        fallback = f"AI summarisation parse error. Raw: {raw[:200]}"
         return {ctx["stock"]["ticker"]: fallback for ctx in contexts}
 
 def build_report() -> dict:
@@ -100,7 +99,6 @@ def build_report() -> dict:
     sector_mv = get_sector_move()
     contexts  = []
 
-    # ── Collect all data first ────────────────────────────────
     for stock in WATCHLIST:
         print(f"→ Fetching data for {stock['name']}...")
         price_data = get_price_data(stock["ticker"])
@@ -109,14 +107,12 @@ def build_report() -> dict:
             continue
         announcements = get_announcements(stock["asx_code"])
         news          = get_news(stock["name"], stock["asx_code"])
-        all_events    = announcements + news
-        ctx           = build_llm_context(stock, price_data, all_events, sector_mv)
+        ctx           = build_llm_context(stock, price_data, announcements + news, sector_mv)
         contexts.append(ctx)
 
-    # ── Single Gemini call for all stocks ─────────────────────
     summaries = {}
     if contexts:
-        print(f"→ Calling Gemini for {len(contexts)} stocks in one request...")
+        print(f"→ Calling Gemini for {len(contexts)} stocks...")
         try:
             raw       = call_gemini(build_batch_prompt(contexts))
             summaries = parse_batch_response(raw, contexts)
@@ -125,7 +121,6 @@ def build_report() -> dict:
             summaries = {ctx["stock"]["ticker"]: f"AI summarisation unavailable: {e}"
                          for ctx in contexts}
 
-    # ── Assemble results ──────────────────────────────────────
     results = []
     for ctx in contexts:
         tkr = ctx["stock"]["ticker"]
