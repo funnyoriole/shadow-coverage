@@ -51,18 +51,11 @@ def format_snapshot(rows: list[dict]) -> str:
 
 # ── News feeds ─────────────────────────────────────────────────
 NEWS_FEEDS = [
-    # Global macro & markets
-    ("Reuters Markets",      "https://feeds.reuters.com/reuters/businessNews"),
-    ("Reuters World",        "https://feeds.reuters.com/Reuters/worldNews"),
-    ("Bloomberg Markets",    "https://feeds.bloomberg.com/markets/news.rss"),
-    ("FT Markets",           "https://www.ft.com/markets?format=rss"),
-    # AU specific
-    ("AFR",                  "https://www.afr.com/rss"),
-    ("RBA News",             "https://www.rba.gov.au/rss/rss-cb-speeches.xml"),
-    # US macro
-    ("WSJ Economy",          "https://feeds.content.dowjones.io/public/rss/mw_realtimeheadlines"),
-    # Geopolitics
-    ("BBC World",            "https://feeds.bbci.co.uk/news/world/rss.xml"),
+    ("Reuters Markets", "https://feeds.reuters.com/reuters/businessNews"),
+    ("Reuters World",   "https://feeds.reuters.com/Reuters/worldNews"),
+    ("BBC World",       "https://feeds.bbci.co.uk/news/world/rss.xml"),
+    ("AFR",             "https://www.afr.com/rss"),
+    ("RBA",             "https://www.rba.gov.au/rss/rss-cb-speeches.xml"),
 ]
 
 def fetch_news(max_per_feed: int = 6) -> list[dict]:
@@ -71,15 +64,12 @@ def fetch_news(max_per_feed: int = 6) -> list[dict]:
         try:
             feed = feedparser.parse(url)
             for e in feed.entries[:max_per_feed]:
-                pub  = e.get("published_parsed")
-                time_str = (
-                    datetime(*pub[:6]).strftime("%d %b %H:%M")
-                    if pub else "recent"
-                )
+                pub      = e.get("published_parsed")
+                time_str = datetime(*pub[:6]).strftime("%d %b %H:%M") if pub else "recent"
                 all_items.append({
-                    "source": source,
-                    "time":   time_str,
-                    "title":  e.get("title", "").strip(),
+                    "source":  source,
+                    "time":    time_str,
+                    "title":   e.get("title", "").strip(),
                     "summary": e.get("summary", "")[:200].strip(),
                 })
         except Exception:
@@ -94,13 +84,12 @@ def format_news(items: list[dict]) -> str:
             lines.append(f"    {item['summary']}")
     return "\n".join(lines)
 
-# ── Gemini call (plain, no grounding) ─────────────────────────
+# ── Gemini call ────────────────────────────────────────────────
 def call_gemini(prompt: str, retries: int = 3, wait: int = 60) -> str:
     body = json.dumps({
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"maxOutputTokens": 1000, "temperature": 0.2}
     }).encode()
-
     for attempt in range(1, retries + 1):
         try:
             req = urllib.request.Request(
@@ -125,13 +114,10 @@ def build_prompt(snapshot_text: str, news_text: str, date_str: str) -> str:
 
 Your reader covers Australian and US equities, specifically A-REITs and BNPL/fintech stocks.
 
-Below is today's market data and a raw news feed from the last 12 hours.
-Your job is to synthesise the most important developments — do not simply list headlines.
-
 MARKET SNAPSHOT:
 {snapshot_text}
 
-NEWS FEED:
+NEWS FEED (last 12 hours):
 {news_text}
 
 Write a morning brief using exactly these section headers:
@@ -172,7 +158,6 @@ def generate_macro_brief() -> dict:
         brief = f"Macro brief unavailable: {e}"
 
     result = {"date": date_str, "snapshot": snapshot, "brief": brief}
-
     with open("macro_report.json", "w") as f:
         json.dump(result, f, indent=2)
     print("✓ macro_report.json written")
